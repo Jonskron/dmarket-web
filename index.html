@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Д Маркет — Доска объявлений в Казахстане</title>
+    <meta name="description" content="Удобная доска объявлений. Покупайте и продавайте товары и услуги по всему Казахстану.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Network Status Floating Banner (Лабораторная работа №4) -->
+    <div id="network-banner" class="network-banner">
+      <span id="network-banner-icon">⚠️</span>
+      <span id="network-banner-text">Подключение к сети проверяется...</span>
+    </div>
+
+    <div class="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-inner">
+          <a href="#" class="button logo" id="logo-link">
+            <span class="logo-mark">Д</span>
+            <span>Маркет</span>
+          </a>
+          <div class="header-actions" id="header-actions">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+      </header>
+
+      <!-- Screen: Home -->
+      <main id="screen-home">
+        <!-- Hero Section -->
+        <section class="hero">
+          <div class="container hero-inner">
+            <div class="eyebrow">Всё нужное — рядом</div>
+            <h1 class="display-title">Находите вещи<br />с историей</h1>
+            <p class="hero-copy">Покупайте, продавайте и находите проверенные услуги по всему Казахстану.</p>
+            
+            <!-- Main Search & Filter Control -->
+            <div class="search-container">
+              <div class="search-box">
+                <svg class="icon search-icon" width="22" height="22" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="m16 16 4 4" />
+                </svg>
+                <input class="field" id="search-query" type="text" placeholder="Что вы ищете? Например, iPhone 15 или диван" />
+                <button class="button filter-toggle-btn" id="btn-toggle-filters" type="button" title="Расширенные фильтры">
+                  <svg class="icon" width="18" height="18" viewBox="0 0 24 24">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                  </svg>
+                  <span class="filter-toggle-text">Фильтры</span>
+                  <span class="filter-badge" id="filter-badge" style="display: none;">0</span>
+                </button>
+                <button class="button search-button" id="search-button">Найти</button>
+              </div>
+
+              <!-- Advanced Filter Panel (Collapsible) -->
+              <div class="advanced-filters" id="advanced-filters-panel" style="display: none;">
+                <div class="filters-card">
+                  <div class="filters-header">
+                    <span class="filters-title">Расширенный поиск и параметры</span>
+                    <button class="button close-subtle-btn" id="btn-close-filters" type="button">&times;</button>
+                  </div>
+                  
+                  <div class="filters-grid">
+                    <!-- Category Select -->
+                    <div class="filter-group">
+                      <label class="field-label" for="filter-category">Категория</label>
+                      <select class="field filter-select" id="filter-category">
+                        <option value="Все">Все категории</option>
+                        <option value="Недвижимость">Недвижимость</option>
+                        <option value="Транспорт">Транспорт</option>
+                        <option value="Электроника">Электроника</option>
+                        <option value="Дом">Дом</option>
+                        <option value="Одежда и обувь">Одежда и обувь</option>
+                        <option value="Услуги">Услуги</option>
+                      </select>
+                    </div>
+
+                    <!-- Subcategory Select -->
+                    <div class="filter-group">
+                      <label class="field-label" for="filter-subcategory">Подкатегория</label>
+                      <select class="field filter-select" id="filter-subcategory">
+                        <option value="Все">Все подкатегории</option>
+                      </select>
+                    </div>
+
+                    <!-- Price Range -->
+                    <div class="filter-group">
+                      <label class="field-label">Цена (₸)</label>
+                      <div class="price-range-row">
+                        <input class="field" type="number" id="filter-min-price" placeholder="От 0" min="0" />
+                        <span class="price-range-sep">—</span>
+                        <input class="field" type="number" id="filter-max-price" placeholder="До" min="0" />
+                      </div>
+                    </div>
+
+                    <!-- Location / City -->
+                    <div class="filter-group">
+                      <label class="field-label" for="filter-location">Город / Регион</label>
+                      <select class="field filter-select" id="filter-location">
+                        <option value="Все">Все города Казахстана</option>
+                        <option value="Алматы">Алматы</option>
+                        <option value="Астана">Астана</option>
+                        <option value="Шымкент">Шымкент</option>
+                        <option value="Караганда">Караганда</option>
+                        <option value="Актобе">Актобе</option>
+                        <option value="Павлодар">Павлодар</option>
+                        <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        <option value="Семей">Семей</option>
+                        <option value="Атырау">Атырау</option>
+                        <option value="Актау">Актау</option>
+                        <option value="Костанай">Костанай</option>
+                      </select>
+                    </div>
+
+                    <!-- Sort -->
+                    <div class="filter-group">
+                      <label class="field-label" for="filter-sort">Сортировка</label>
+                      <select class="field filter-select" id="filter-sort">
+                        <option value="newest">Сначала новые</option>
+                        <option value="price_asc">Сначала дешевле (по возрастанию)</option>
+                        <option value="price_desc">Сначала дороже (по убыванию)</option>
+                        <option value="views">По популярности (просмотры)</option>
+                      </select>
+                    </div>
+
+                    <!-- Photo checkbox -->
+                    <div class="filter-group filter-checkbox-group">
+                      <label class="checkbox-container" for="filter-only-photo">
+                        <input type="checkbox" id="filter-only-photo" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Только с фото</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="filters-footer">
+                    <button class="button ghost-button" id="btn-reset-filters" type="button">Сбросить всё</button>
+                    <button class="button primary-button" id="btn-apply-filters" type="button">Применить фильтры</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-orbit orbit-one"></div>
+          <div class="hero-orbit orbit-two"></div>
+        </section>
+
+        <!-- Catalog Section -->
+        <section class="container catalog">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-title">Свежие объявления</h2>
+              <p class="section-copy" id="catalog-count">Загрузка предложений...</p>
+            </div>
+            <div id="active-filter-tags" class="active-filter-tags"></div>
+          </div>
+
+          <!-- Category Chips -->
+          <div class="chips" id="category-chips" role="group" aria-label="Категории"></div>
+
+          <!-- Subcategory Chips (Dynamically shown when a specific category is active) -->
+          <div class="chips subchips" id="subcategory-chips" role="group" aria-label="Подкатегории" style="display: none;"></div>
+
+          <!-- Listings Grid -->
+          <div id="catalog-grid" class="grid"></div>
+        </section>
+      </main>
+
+      <!-- Screen: Detail -->
+      <main id="screen-detail" class="container detail-page" style="display: none;">
+        <div id="detail-content"></div>
+      </main>
+
+      <!-- Screen: Favorites -->
+      <main id="screen-favorites" class="container simple-page" style="display: none;">
+        <div id="favorites-content"></div>
+      </main>
+
+      <!-- Screen: Messages -->
+      <main id="screen-messages" class="container simple-page" style="display: none;">
+        <div id="messages-content"></div>
+      </main>
+
+      <!-- Screen: Account -->
+      <main id="screen-account" class="container simple-page" style="display: none;">
+        <div id="account-content"></div>
+      </main>
+
+      <!-- Screen: Admin Users Management -->
+      <main id="screen-admin-users" class="container simple-page" style="display: none;">
+        <div id="admin-users-content"></div>
+      </main>
+
+      <!-- Screen: Add / Edit Listing -->
+      <main id="screen-add" class="form-page" style="display: none;">
+        <div class="form-container">
+          <button class="button back-button" id="btn-add-cancel">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+            Вернуться назад
+          </button>
+          <div class="form-heading">
+            <div class="eyebrow">Новое объявление</div>
+            <h2 class="form-title">Расскажите, что предлагаете</h2>
+            <p>Чем подробнее описание и чётче фото, тем быстрее найдётся покупатель.</p>
+          </div>
+
+          <form class="listing-form" id="form-add-listing">
+            <!-- Step 1 -->
+            <div class="form-section">
+              <div class="form-section-number">01</div>
+              <div class="form-section-content">
+                <div class="form-section-title">Основная информация</div>
+                <div class="field-group">
+                  <label class="field-label" for="ad-title">Название товара или услуги</label>
+                  <input class="field" id="ad-title" name="title" placeholder="Например, MacBook Pro 14 или 2-комнатная квартира" required maxlength="70" />
+                </div>
+                
+                <div class="two-fields">
+                  <div class="field-group">
+                    <label class="field-label" for="ad-category">Категория</label>
+                    <select class="field" id="ad-category" name="category" required>
+                      <option value="" disabled selected>Выберите категорию</option>
+                      <option value="Недвижимость">Недвижимость</option>
+                      <option value="Транспорт">Транспорт</option>
+                      <option value="Электроника">Электроника</option>
+                      <option value="Дом">Дом</option>
+                      <option value="Одежда и обувь">Одежда и обувь</option>
+                      <option value="Услуги">Услуги</option>
+                    </select>
+                  </div>
+                  
+                  <div class="field-group">
+                    <label class="field-label" for="ad-subcategory">Подкатегория</label>
+                    <select class="field" id="ad-subcategory" name="subcategory">
+                      <option value="">Выберите категорию выше</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label" for="ad-description">Описание</label>
+                  <textarea class="field textarea" id="ad-description" name="description" rows="5" placeholder="Опишите состояние, особенности, комплектацию и условия..." required></textarea>
+                  <span class="field-hint">Добавьте подробности для более быстрых продаж</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="form-section">
+              <div class="form-section-number">02</div>
+              <div class="form-section-content">
+                <div class="form-section-title">Фотографии и стоимость</div>
+                <div class="field-group">
+                  <div class="field-label-row">
+                    <span class="field-label">Фотографии (можно выбрать несколько)</span>
+                    <span class="field-hint" id="ad-photo-count-hint">До 8 фото</span>
+                  </div>
+                  <label class="upload-zone" id="ad-upload-label" for="ad-file-input">
+                    <div id="ad-preview-content" class="upload-placeholder">
+                      <span class="upload-icon">
+                        <svg class="icon" width="24" height="24" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 14v5h14v-5"/></svg>
+                      </span>
+                      <span class="upload-title">Нажмите или перетащите фотографии</span>
+                      <span class="field-hint">JPG, PNG, WEBP до 10 МБ. Первая фотография будет главной обложкой.</span>
+                    </div>
+                    <input type="file" name="images[]" id="ad-file-input" accept="image/*" multiple class="file-hidden-input" />
+                  </label>
+                  <!-- Multi photo preview thumbnails -->
+                  <div id="ad-multi-thumbs" class="upload-multi-thumbs" style="display: none;"></div>
+                </div>
+                <div class="two-fields">
+                  <div class="field-group">
+                    <label class="field-label" for="ad-price">Цена (₸)</label>
+                    <input class="field" id="ad-price" name="price" type="number" placeholder="0" min="0" required />
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="ad-location">Город или район</label>
+                    <input class="field" id="ad-location" name="location" placeholder="Например, Алматы, Медеуский р-н" required />
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="ad-phone">Телефон продавца</label>
+                  <input class="field" id="ad-phone" name="phone" type="tel" placeholder="+7 (700) 000-00-00" required />
+                  <span class="field-hint">Номер будет показан покупателю по кнопке «Позвонить»</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Error message if any -->
+            <div class="form-error" id="add-error" style="display: none; margin: 20px 48px 0;"></div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+              <button class="button ghost-button" type="button" id="btn-form-cancel">Отмена</button>
+              <button class="button primary-button" id="btn-add-submit" type="submit">Опубликовать объявление</button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <!-- Footer with Admin Phone 87770648263 -->
+      <footer class="footer">
+        <div class="container footer-inner">
+          <div class="footer-left">
+            <span class="footer-brand">Д Маркет</span>
+            <span class="footer-copy">Место для хороших находок · 2026</span>
+          </div>
+          
+          <div class="footer-admin-block">
+            <div class="footer-admin-label">Служба поддержки и администратор:</div>
+            <div class="footer-admin-contacts">
+              <a href="tel:87770648263" class="footer-phone-pill" title="Позвонить администратору">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <span>87770648263</span>
+              </a>
+              <a href="https://wa.me/77770648263" target="_blank" rel="noopener noreferrer" class="footer-wa-pill" title="Написать администратору в WhatsApp">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modal-container"></div>
+
+    <!-- OLX-Style Fullscreen Image Lightbox Container -->
+    <div id="lightbox-container"></div>
+
+    <!-- Global Toast Notifications Container -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Client Script (Лабораторная работа №4: Async Fetch, Loader, Offline Support) -->
+    <script src="app.js?v=20261116_lab4"></script>
+  </body>
+</html>

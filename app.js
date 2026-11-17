@@ -595,11 +595,12 @@
       `;
 
       if (isAdmin) {
+        const restApiUrl = (isLocalhost && !isFlaskServer) ? 'http://localhost:5000/dashboard' : '/dashboard';
         html += `
           <button class="button ghost-button admin-header-btn desktop-only" id="btn-nav-admin" title="Управление профилями клиентов">
             ${icons.users} <span>Клиенты</span><span class="admin-badge">Админ</span>
           </button>
-          <a href="http://localhost:5000/dashboard" id="btn-nav-restapi" class="button api-header-btn" target="_blank" title="Панель REST API (Лабораторная 3)" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; border-radius:999px; padding:6px 14px; font-weight:800; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+          <a href="${restApiUrl}" id="btn-nav-restapi" class="button api-header-btn" target="_blank" title="Панель REST API (Лабораторная 3)" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; border-radius:999px; padding:6px 14px; font-weight:800; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e;"></span>
             <span>REST API (Лаб 3)</span>
           </a>
@@ -644,7 +645,11 @@
     document.getElementById('btn-nav-admin')?.addEventListener('click', () => navigate('admin-users'));
     document.getElementById('btn-nav-restapi')?.addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('http://localhost:5000/dashboard', '_blank');
+      let targetUrl = '/dashboard';
+      if (isLocalhost && !isFlaskServer) {
+        targetUrl = 'http://localhost:5000/dashboard';
+      }
+      window.open(targetUrl, '_blank');
     });
     document.getElementById('btn-nav-login')?.addEventListener('click', () => openModal('login'));
     document.getElementById('btn-nav-register')?.addEventListener('click', () => openModal('register'));

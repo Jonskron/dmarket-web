@@ -28,7 +28,21 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key_change_in_production')
 CORS_ORIGIN = os.getenv('CORS_ORIGIN', '*')
 CORS_METHODS = [m.strip() for m in os.getenv('CORS_METHODS', 'GET,POST,PUT,DELETE,OPTIONS').split(',')]
 CORS_HEADERS = [h.strip() for h in os.getenv('CORS_HEADERS', 'Content-Type,Authorization').split(',')]
-DB_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'd_market.db')
+
+# Поддержка Serverless (Vercel): файловая система в /var/task доступна только для чтения,
+# поэтому переносим SQLite базу данных в /tmp, где разрешена запись.
+if os.getenv('VERCEL') == '1':
+    import shutil
+    tmp_db = Path('/tmp/d_market.db')
+    orig_db = BASE_DIR / os.getenv('DATABASE_PATH', 'd_market.db')
+    if not tmp_db.exists() and orig_db.exists():
+        try:
+            shutil.copy2(orig_db, tmp_db)
+        except Exception:
+            pass
+    DB_PATH = tmp_db if tmp_db.exists() else orig_db
+else:
+    DB_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'd_market.db')
 
 # 2. Инициализация приложения Flask
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path='')
@@ -79,6 +93,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 phone TEXT DEFAULT '',
                 role TEXT DEFAULT 'user',
+                avatar TEXT DEFAULT '',
                 is_blocked INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -416,15 +431,22 @@ def create_listing():
     upload_dir = BASE_DIR / 'uploads'
     upload_dir.mkdir(parents=True, exist_ok=True)
     uploaded_urls = []
-    files = request.files.getlist('photos[]') or request.files.getlist('photo') or request.files.getlist('images')
-    for f in files:
+    raw_files = []
+    for k in ['images[]', 'images', 'photos[]', 'photos', 'photo', 'image']:
+        raw_files.extend(request.files.getlist(k))
+    if not raw_files and 'images[]' in request.files:
+        raw_files = [request.files['images[]']]
+    elif not raw_files and 'image' in request.files:
+        raw_files = [request.files['image']]
+
+    for f in raw_files:
         if f and f.filename:
             safe_name = f"{int(datetime.now().timestamp())}_{secure_filename(f.filename)}"
             f.save(upload_dir / safe_name)
             uploaded_urls.append(f"/uploads/{safe_name}")
 
     if uploaded_urls:
-        image_db_val = json.dumps(uploaded_urls)
+        image_db_val = json.dumps(uploaded_urls) if len(uploaded_urls) > 1 else uploaded_urls[0]
     elif image:
         image_db_val = image
     else:
@@ -486,15 +508,22 @@ def update_listing(listing_id):
     upload_dir = BASE_DIR / 'uploads'
     upload_dir.mkdir(parents=True, exist_ok=True)
     uploaded_urls = []
-    files = request.files.getlist('photos[]') or request.files.getlist('photo')
-    for f in files:
+    raw_files = []
+    for k in ['images[]', 'images', 'photos[]', 'photos', 'photo', 'image']:
+        raw_files.extend(request.files.getlist(k))
+    if not raw_files and 'images[]' in request.files:
+        raw_files = [request.files['images[]']]
+    elif not raw_files and 'image' in request.files:
+        raw_files = [request.files['image']]
+
+    for f in raw_files:
         if f and f.filename:
             safe_name = f"{int(datetime.now().timestamp())}_{secure_filename(f.filename)}"
             f.save(upload_dir / safe_name)
             uploaded_urls.append(f"/uploads/{safe_name}")
 
     if uploaded_urls:
-        image = json.dumps(uploaded_urls)
+        image = json.dumps(uploaded_urls) if len(uploaded_urls) > 1 else uploaded_urls[0]
 
     category_raw = data.get('category') or data.get('category_id')
     cat_id = existing['category_id']
@@ -582,11 +611,14 @@ def api_me():
         return jsonify({'success': True, 'user': None}), 200
 
     conn = get_db()
-    user = conn.execute("SELECT id, login, name, phone, role FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     if user:
         u_dict = dict(user)
+        u_dict.pop('password_hash', None)
         u_dict['is_admin'] = 1 if u_dict.get('role') == 'admin' else 0
+        if 'avatar' not in u_dict or not u_dict['avatar']:
+            u_dict['avatar'] = ''
         return jsonify({'success': True, 'user': u_dict}), 200
     return jsonify({'success': True, 'user': None}), 200
 
@@ -605,6 +637,8 @@ def api_login():
         u_dict = dict(user)
         u_dict.pop('password_hash', None)
         u_dict['is_admin'] = 1 if u_dict.get('role') == 'admin' else 0
+        if 'avatar' not in u_dict or not u_dict['avatar']:
+            u_dict['avatar'] = ''
         session['user_id'] = u_dict['id']
         return jsonify({
             'success': True,
@@ -618,7 +652,8 @@ def api_login():
             'name': 'Данель Балтабаев (Админ)',
             'phone': '+7 (777) 064-82-63',
             'role': 'admin',
-            'is_admin': 1
+            'is_admin': 1,
+            'avatar': ''
         }
         session['user_id'] = 1
         return jsonify({'success': True, 'user': admin_user, 'message': 'Добро пожаловать, Администратор!'}), 200
@@ -630,7 +665,8 @@ def api_login():
             'name': login or 'Пользователь',
             'phone': '+7 (701) 555-12-34',
             'role': 'user',
-            'is_admin': 0
+            'is_admin': 0,
+            'avatar': ''
         }
         session['user_id'] = 2
         return jsonify({'success': True, 'user': regular_user, 'message': f'Добро пожаловать, {regular_user["name"]}!'}), 200
@@ -639,17 +675,38 @@ def api_login():
 @app.route('/api/register', methods=['POST'])
 def api_register():
     data = request.get_json(silent=True) or request.form.to_dict()
-    name = data.get('name', 'Пользователь')
-    login = data.get('login', f"user_{int(datetime.now().timestamp())}")
-    phone = data.get('phone', '+7 (777) 000-00-00')
+    name = str(data.get('name', 'Пользователь')).strip()
+    login = str(data.get('login', f"user_{int(datetime.now().timestamp())}")).strip()
+    phone = str(data.get('phone', '+7 (777) 000-00-00')).strip()
+    password = str(data.get('password', 'password123')).strip()
+
+    avatar_url = ''
+    if 'avatar' in request.files and request.files['avatar'].filename:
+        av_file = request.files['avatar']
+        upload_dir = BASE_DIR / 'uploads'
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = f"avatar_{int(datetime.now().timestamp())}_{secure_filename(av_file.filename)}"
+        av_file.save(upload_dir / safe_name)
+        avatar_url = f"/uploads/{safe_name}"
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("INSERT OR IGNORE INTO users (login, name, password_hash, phone, role) VALUES (?, ?, ?, ?, 'user')",
-                (login, name, generate_password_hash('password123'), phone))
-    new_id = cur.lastrowid or 2
-    conn.commit()
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        cur.execute("INSERT OR IGNORE INTO users (login, name, password_hash, phone, role, avatar) VALUES (?, ?, ?, ?, 'user', ?)",
+                    (login, name, generate_password_hash(password), phone, avatar_url))
+        new_id = cur.lastrowid or 2
+        conn.commit()
+    except Exception:
+        new_id = 2
     conn.close()
-    user_data = {'id': new_id, 'name': name, 'login': login, 'phone': phone, 'role': 'user', 'is_admin': 0}
+
+    user_data = {'id': new_id, 'name': name, 'login': login, 'phone': phone, 'role': 'user', 'is_admin': 0, 'avatar': avatar_url}
     session['user_id'] = new_id
     return jsonify({'success': True, 'user': user_data, 'message': 'Регистрация успешна'}), 200
 
@@ -710,7 +767,12 @@ def serve_js():
 
 @app.route('/uploads/<path:filename>', methods=['GET'])
 def serve_uploads(filename):
-    return send_from_directory(BASE_DIR / 'uploads', filename)
+    tmp_up = Path('/tmp/uploads')
+    if tmp_up.exists() and (tmp_up / filename).exists():
+        return send_from_directory(tmp_up, filename)
+    upload_dir = BASE_DIR / 'uploads'
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    return send_from_directory(upload_dir, filename)
 
 # ==============================================================================
 # ИНТЕРАКТИВНЫЙ ВЕБ-ИНТЕРФЕЙС И ДОКУМЕНТАЦИЯ (SWAGGER / API DASHBOARD)

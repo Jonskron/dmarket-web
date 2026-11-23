@@ -282,6 +282,13 @@
         newCity = body.get('location') || newCity;
         newSeller = body.get('seller') || newSeller;
         newPhone = body.get('phone') || newPhone;
+
+        const previewImg = document.querySelector('#ad-preview-content img');
+        if (previewImg && previewImg.src && !previewImg.src.includes('data:image/svg')) {
+          newImg = previewImg.src;
+        } else if (body.get('image')) {
+          newImg = body.get('image');
+        }
       }
 
       const newListing = {
@@ -2458,6 +2465,12 @@
       const formData = new FormData(form);
       if (isEditing) {
         formData.append('id', editId);
+      }
+
+      // Передаем DataURL предпросмотра фото для мгновенного отображения
+      const previewImg = previewContent?.querySelector('img');
+      if (previewImg && previewImg.src && !previewImg.src.includes('data:image/svg')) {
+        formData.append('image', previewImg.src);
       }
 
       try {

@@ -40,9 +40,11 @@ if os.getenv('VERCEL') == '1':
             shutil.copy2(orig_db, tmp_db)
         except Exception:
             pass
-    DB_PATH = tmp_db if tmp_db.exists() else orig_db
+    DB_PATH = tmp_db
+    UPLOAD_DIR = Path('/tmp/uploads')
 else:
     DB_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'd_market.db')
+    UPLOAD_DIR = BASE_DIR / 'uploads'
 
 # 2. Инициализация приложения Flask
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path='')
@@ -428,7 +430,7 @@ def create_listing():
             cat_id = 1
 
     # Обработка файлов изображений
-    upload_dir = BASE_DIR / 'uploads'
+    upload_dir = UPLOAD_DIR
     upload_dir.mkdir(parents=True, exist_ok=True)
     uploaded_urls = []
     raw_files = []
@@ -505,7 +507,7 @@ def update_listing(listing_id):
     phone = data.get('phone', existing['phone'])
 
     # Обработка фото
-    upload_dir = BASE_DIR / 'uploads'
+    upload_dir = UPLOAD_DIR
     upload_dir.mkdir(parents=True, exist_ok=True)
     uploaded_urls = []
     raw_files = []
@@ -700,7 +702,7 @@ def api_register():
     avatar_url = ''
     if 'avatar' in request.files and request.files['avatar'].filename:
         av_file = request.files['avatar']
-        upload_dir = BASE_DIR / 'uploads'
+        upload_dir = UPLOAD_DIR
         upload_dir.mkdir(parents=True, exist_ok=True)
         safe_name = f"avatar_{int(datetime.now().timestamp())}_{secure_filename(av_file.filename)}"
         av_file.save(upload_dir / safe_name)
@@ -788,12 +790,12 @@ def serve_js():
 
 @app.route('/uploads/<path:filename>', methods=['GET'])
 def serve_uploads(filename):
-    tmp_up = Path('/tmp/uploads')
-    if tmp_up.exists() and (tmp_up / filename).exists():
-        return send_from_directory(tmp_up, filename)
-    upload_dir = BASE_DIR / 'uploads'
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    return send_from_directory(upload_dir, filename)
+    if UPLOAD_DIR.exists() and (UPLOAD_DIR / filename).exists():
+        return send_from_directory(UPLOAD_DIR, filename)
+    fallback_dir = BASE_DIR / 'uploads'
+    if fallback_dir.exists() and (fallback_dir / filename).exists():
+        return send_from_directory(fallback_dir, filename)
+    return jsonify({'success': False, 'error': 'Файл не найден'}), 404
 
 # ==============================================================================
 # ИНТЕРАКТИВНЫЙ ВЕБ-ИНТЕРФЕЙС И ДОКУМЕНТАЦИЯ (SWAGGER / API DASHBOARD)
@@ -1322,6 +1324,9 @@ def server_error(e):
 # ==============================================================================
 # ТОЧКА ВХОДА
 # ==============================================================================
+
+# Гарантируем инициализацию схемы БД при WSGI/Serverless импорте (Vercel, Gunicorn)
+init_db()
 
 if __name__ == '__main__':
     print("=" * 70)

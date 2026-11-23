@@ -658,17 +658,34 @@ def api_login():
         session['user_id'] = 1
         return jsonify({'success': True, 'user': admin_user, 'message': 'Добро пожаловать, Администратор!'}), 200
     else:
-        # Обычный пользователь
+        # Вход или регистрация под указанным логином (не подменяя на чужой профиль)
+        conn = get_db()
+        cur = conn.cursor()
+        new_name = login.capitalize() if login else 'Пользователь'
+        try:
+            cur.execute(
+                "INSERT INTO users (login, name, password_hash, phone, role) VALUES (?, ?, ?, ?, 'user')",
+                (login, new_name, generate_password_hash(password or '123456'), '+7 (777) 000-00-00')
+            )
+            new_id = cur.lastrowid
+            conn.commit()
+        except Exception:
+            row = cur.execute("SELECT id, name FROM users WHERE login = ?", (login,)).fetchone()
+            new_id = row[0] if row else 1
+            if row:
+                new_name = row[1]
+        conn.close()
+
         regular_user = {
-            'id': 2,
+            'id': new_id,
             'login': login or 'user',
-            'name': login or 'Пользователь',
-            'phone': '+7 (701) 555-12-34',
+            'name': new_name,
+            'phone': '+7 (777) 000-00-00',
             'role': 'user',
             'is_admin': 0,
             'avatar': ''
         }
-        session['user_id'] = 2
+        session['user_id'] = new_id
         return jsonify({'success': True, 'user': regular_user, 'message': f'Добро пожаловать, {regular_user["name"]}!'}), 200
 
 @app.route('/api/auth/register', methods=['POST'])
@@ -700,10 +717,14 @@ def api_register():
     try:
         cur.execute("INSERT OR IGNORE INTO users (login, name, password_hash, phone, role, avatar) VALUES (?, ?, ?, ?, 'user', ?)",
                     (login, name, generate_password_hash(password), phone, avatar_url))
-        new_id = cur.lastrowid or 2
+        new_id = cur.lastrowid
+        if not new_id:
+            row = cur.execute("SELECT id FROM users WHERE login = ?", (login,)).fetchone()
+            new_id = row[0] if row else int(datetime.now().timestamp())
         conn.commit()
     except Exception:
-        new_id = 2
+        row = cur.execute("SELECT id FROM users WHERE login = ?", (login,)).fetchone()
+        new_id = row[0] if row else int(datetime.now().timestamp())
     conn.close()
 
     user_data = {'id': new_id, 'name': name, 'login': login, 'phone': phone, 'role': 'user', 'is_admin': 0, 'avatar': avatar_url}

@@ -247,6 +247,45 @@
     } catch (_) {}
   }
 
+  function getUserCustomListings() {
+    try {
+      const raw = localStorage.getItem('dmarket_custom_listings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  function saveUserCustomListing(listing) {
+    if (!listing || !listing.id) return;
+    try {
+      const existing = getUserCustomListings();
+      const updated = [listing, ...existing.filter((item) => item.id !== listing.id)];
+      localStorage.setItem('dmarket_custom_listings', JSON.stringify(updated));
+    } catch (_) {}
+  }
+
+  function getSavedUser() {
+    try {
+      const u = localStorage.getItem('dmarket_auth_user');
+      return u ? JSON.parse(u) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setSavedUser(user) {
+    try {
+      if (user) {
+        localStorage.setItem('dmarket_auth_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('dmarket_auth_user');
+      }
+    } catch (_) {}
+  }
+
   // Autonomous / Offline fallback handler for GitHub Pages & Cloud hosting
   function handleOfflineFallback(action, options = {}) {
     const listings = getStoredListings();
@@ -2317,6 +2356,7 @@
     try {
       const res = await request('login', { method: 'POST', body: formData });
       state.user = res.user;
+      setSavedUser(res.user);
       state.favorites = new Set(res.favorites || []);
       state.unreadMessagesCount = res.unreadCount || 0;
       closeModal();
@@ -2347,6 +2387,7 @@
     try {
       const res = await request('register', { method: 'POST', body: formData });
       state.user = res.user;
+      setSavedUser(res.user);
       state.favorites = new Set(res.favorites || []);
       state.unreadMessagesCount = 0;
       closeModal();
@@ -2369,6 +2410,7 @@
       await request('logout', { method: 'POST' });
     } catch (_) {}
     state.user = null;
+    setSavedUser(null);
     state.favorites.clear();
     state.unreadMessagesCount = 0;
     state.activeChat = null;
@@ -2483,11 +2525,13 @@
             state.listings[idx] = res.listing;
           }
           state.selectedListing = res.listing;
+          saveUserCustomListing(res.listing);
           showToast(res.message || 'Объявление успешно обновлено!', 'success');
           resetAddListingForm();
           openDetail(res.listing.id);
         } else {
           state.listings.unshift(res.listing);
+          saveUserCustomListing(res.listing);
           showToast(res.message || 'Объявление успешно опубликовано и добавлено в каталог!', 'success');
           resetAddListingForm();
           openDetail(res.listing.id);
@@ -2576,12 +2620,23 @@
     }
     try {
       const res = await request('listings');
-      state.listings = res.listings || [];
+      const serverListings = res.listings || [];
+      const customListings = getUserCustomListings();
+      // Пользовательские созданные объявления всегда отображаются первыми и не сбрасываются
+      state.listings = [
+        ...customListings,
+        ...serverListings.filter((s) => !customListings.some((c) => c.id === s.id))
+      ];
       renderCatalog();
     } catch (err) {
       console.warn('[Lab 4] Ошибка при загрузке каталога:', err);
-      renderCatalogError(err.message);
-      showToast('Не удалось загрузить данные с сервера. ' + err.message, 'error');
+      const customListings = getUserCustomListings();
+      const stored = getStoredListings();
+      state.listings = [
+        ...customListings,
+        ...stored.filter((s) => !customListings.some((c) => c.id === s.id))
+      ];
+      renderCatalog();
     }
   }
 
@@ -2636,11 +2691,15 @@
     setupFilters();
     setupAddListingForm();
 
+    // Восстанавливаем пользователя из локального хранилища браузера
+    state.user = getSavedUser();
+
     // Check user session
     try {
       const res = await request('me');
-      if (res.user) {
+      if (res && res.user) {
         state.user = res.user;
+        setSavedUser(res.user);
         state.favorites = new Set(res.favorites || []);
         state.unreadMessagesCount = res.unreadCount || 0;
       }
